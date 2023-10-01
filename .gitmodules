@@ -1,0 +1,8 @@
+[submodule "submodules/TP_to_img"]
+	path = submodules/TP_to_img
+	url = https://github.com/dune-sn-online-pointing/TP_to_img.git
+	branch = evilla/dev
+[submodule "submodules/tpstream-hdf5-converter"]
+	path = submodules/tpstream-hdf5-converter
+	url = https://github.com/dune-sn-online-pointing/tpstream-hdf5-converter.git
+	branch = evilla/dev
