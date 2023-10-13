@@ -15,7 +15,7 @@ from itertools import cycle
 from mpl_toolkits.axes_grid1 import ImageGrid
 import seaborn as sns
 import sys
-sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/online-pointing-utils/python/tps_text_to_image')
+sys.path.append('../../online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
 
 

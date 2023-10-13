@@ -33,9 +33,7 @@ parser.add_argument("--model_name", help="model name", default="model.h5", type=
 parser.add_argument('--load_model', action='store_true', help='save the model')
 parser.add_argument("--balance_training_set", action='store_true', help="balance the training set")
 
-
 args = parser.parse_args()
-
 input_data = args.input_data
 input_label = args.input_label
 output_folder = args.output_folder
@@ -227,9 +225,7 @@ if __name__=='__main__':
         # Load the model
         model = keras.models.load_model(output_folder+model_name+".h5")
 
-
     # Do some test
-
     print("Doing some test...")
     predictions = model.predict(test_images)   
     print("Labels unique: ", np.unique(np.argmax(test_labels, axis=1), return_counts=True))
