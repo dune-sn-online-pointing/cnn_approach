@@ -18,7 +18,7 @@ import sys
 
 sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
-import cnn2d_classifier as cnn2d
+import cnn2d_classifier_libs as cnn2d
 
 # Set seed for reproducibility
 seed = 42

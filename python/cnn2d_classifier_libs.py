@@ -133,13 +133,23 @@ def log_metrics(y_true, y_pred, labels=[0,1,2,3,4,5,6,7,8,9], epoch=0, test=Fals
 def save_sample_img(ds_item, output_folder, img_name):
     if ds_item.shape[2] == 1:
         img = ds_item[:,:,0]
-        plt.imsave(output_folder+img_name+'.png', img)
+        plt.figure(figsize=(10, 26))
+        plt.title(img_name)
+        plt.imshow(img)
+        # plt.colorbar()
+        # add x and y labels
+        plt.xlabel("Channel")
+        plt.ylabel("Time (ticks)")
+        # save the image, with a bbox in inches smaller than the default but bigger than tight
+        plt.savefig(output_folder+img_name+".png", bbox_inches='tight', pad_inches=1)
+        plt.close()
+
     else:
         img_u = ds_item[:,:,0]
         img_v = ds_item[:,:,1]
         img_y = ds_item[:,:,2]
         if n_views > 1:
-            fig = plt.figure(figsize=(10, 26))
+            fig = plt.figure(figsize=(8, 20))
             grid = ImageGrid(fig, 111,          # as in plt.subplot(111)
                             nrows_ncols=(1,3),
                             axes_pad=0.5,
