@@ -2,7 +2,7 @@ INPUT_FILE=/eos/user/d/dapullia/tp_dataset/snana/dataset/dataset_img.npy
 INPUT_LABEL=/eos/user/d/dapullia/tp_dataset/snana/dataset/dataset_label.npy
 OUTPUT_FOLDER=/eos/user/d/dapullia/cnn_approach/snana_hits/
 MODEL_NAME=model_unbalanced
-LOAD_MODEL=true
+LOAD_MODEL=false
 BALANCE_TRAINING_SET=false
 
 

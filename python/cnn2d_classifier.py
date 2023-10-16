@@ -101,6 +101,11 @@ if __name__=='__main__':
     print("Dataset_lab shape after: ", dataset_label.shape)
     print("Images with label 10 removed.")
 
+    # Create more intelligent labels
+    print("Creating labels...")
+    dataset_label, label_names, n_classes = cnn2d.create_labels(dataset_label)
+    print("Labels created.")
+
     # shuffle the dataset
     print("Shuffling the dataset...")
     index = np.arange(dataset_img.shape[0])
@@ -142,7 +147,7 @@ if __name__=='__main__':
             print("Model not found, building a new one...")
         # Build the model, cnn 2D
         print("Building the model...")
-        model = cnn2d.build_model()
+        model = cnn2d.build_model(n_classes=n_classes)
 
 
         # Compile the model
@@ -232,7 +237,7 @@ if __name__=='__main__':
     print("Predictions unique: ", np.unique(np.argmax(predictions, axis=1), return_counts=True))
     # Calculate metrics
     print("Calculating metrics...")
-    cnn2d.log_metrics(test_labels, predictions, labels=[0,1,2,3,4,5,6,7,8,9], epoch=0, test=True, output_folder=output_folder, model_name=model_name)
+    cnn2d.log_metrics(test_labels, predictions, label_names=label_names, test=True, output_folder=output_folder, model_name=model_name)
     print("Metrics calculated.")
     print("Test done.")
 

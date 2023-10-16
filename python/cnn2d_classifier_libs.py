@@ -19,7 +19,7 @@ sys.path.append('../../online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
 
 
-def build_model():
+def build_model(n_classes):
 
     model = tf.keras.Sequential()
 
@@ -41,15 +41,15 @@ def build_model():
     model.add(layers.LeakyReLU(alpha=0.1))
     model.add(layers.Dense(64, activation='linear'))
     model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.Dense(10, activation='softmax'))  
+    model.add(layers.Dense(n_classes, activation='softmax'))  
 
     return model
 
-def calculate_metrics( y_true, y_pred, labels=[0,1,2,3,4,5,6,7,8,9]):
+def calculate_metrics( y_true, y_pred,):
     # calculate the confusion matrix, the accuracy, and the precision and recall 
     y_pred_am = np.argmax(y_pred, axis=1)
     y_true_am = np.argmax(y_true, axis=1)
-    cm = confusion_matrix(y_true_am, y_pred_am, labels=labels)
+    cm = confusion_matrix(y_true_am, y_pred_am, )
     accuracy = accuracy_score(y_true_am, y_pred_am)
     precision = precision_score(y_true_am, y_pred_am, average='macro')
     recall = recall_score(y_true_am, y_pred_am, average='macro')
@@ -57,8 +57,8 @@ def calculate_metrics( y_true, y_pred, labels=[0,1,2,3,4,5,6,7,8,9]):
 
     return cm, accuracy, precision, recall, f1
     
-def log_metrics(y_true, y_pred, labels=[0,1,2,3,4,5,6,7,8,9], epoch=0, test=False, output_folder="", model_name="model"):
-    cm, accuracy, precision, recall, f1 = calculate_metrics(y_true, y_pred, labels)
+def log_metrics(y_true, y_pred, label_names=[0,1,2,3,4,5,6,7,8,9], epoch=0, test=False, output_folder="", model_name="model"):
+    cm, accuracy, precision, recall, f1 = calculate_metrics(y_true, y_pred)
     print("Confusion Matrix")
     print(cm)
     print("Accuracy: ", accuracy)
@@ -90,7 +90,7 @@ def log_metrics(y_true, y_pred, labels=[0,1,2,3,4,5,6,7,8,9], epoch=0, test=Fals
     # save confusion matrix 
     plt.figure(figsize=(10,10))
     plt.title("Confusion matrix")
-    sns.heatmap(cm, annot=True, cmap="YlGnBu", xticklabels=labels, yticklabels=labels)
+    sns.heatmap(cm, annot=True, cmap="YlGnBu", xticklabels=label_names, yticklabels=label_names)
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     if test:
@@ -104,7 +104,7 @@ def log_metrics(y_true, y_pred, labels=[0,1,2,3,4,5,6,7,8,9], epoch=0, test=Fals
     plt.clf()
     # Compute ROC curve and ROC area for each class
     # Binarize the output
-    y_test = label_binarize(y_true, classes=labels)
+    y_test = label_binarize(y_true, classes=np.arange(len(label_names)))
     n_classes = y_test.shape[1]
     
     fpr = dict()
@@ -191,4 +191,12 @@ def save_samples_from_ds(dataset, labels, output_folder, name="img", n_samples_p
         for i, sample in enumerate(samples):
             save_sample_img(sample, output_folder, name+"_"+str(label)+"_"+str(i))
 
-
+def create_labels(dataset_label):
+    # create more intelligent labels
+    effective_labels = np.zeros(dataset_label.shape)
+    label_names = []
+    n_classes = np.unique(dataset_label).shape[0]
+    for i, label in enumerate(np.unique(dataset_label)):
+        label_names.append(label)
+        effective_labels[np.where(dataset_label == label)] = i
+    return effective_labels, label_names, n_classes
