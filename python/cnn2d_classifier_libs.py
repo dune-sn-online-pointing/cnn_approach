@@ -147,34 +147,33 @@ def save_sample_img(ds_item, output_folder, img_name):
     else:
         img_u = ds_item[:,:,0]
         img_v = ds_item[:,:,1]
-        img_y = ds_item[:,:,2]
-        if n_views > 1:
-            fig = plt.figure(figsize=(8, 20))
-            grid = ImageGrid(fig, 111,          # as in plt.subplot(111)
-                            nrows_ncols=(1,3),
-                            axes_pad=0.5,
-                            share_all=True,
-                            cbar_location="right",
-                            cbar_mode="single",
-                            cbar_size="30%",
-                            cbar_pad=0.25,
-                            )   
+        img_x = ds_item[:,:,2]
+        fig = plt.figure(figsize=(8, 20))
+        grid = ImageGrid(fig, 111,          # as in plt.subplot(111)
+                        nrows_ncols=(1,3),
+                        axes_pad=0.5,
+                        share_all=True,
+                        cbar_location="right",
+                        cbar_mode="single",
+                        cbar_size="30%",
+                        cbar_pad=0.25,
+                        )   
 
 
-            if img_u[0, 0] != -1:
-                im = grid[0].imshow(img_u)
-                grid[0].set_title('U plane')
-            if img_v[0, 0] != -1:
-                im = grid[1].imshow(img_v)
-                grid[1].set_title('V plane')
-            if img_x[0, 0] != -1:
-                im = grid[2].imshow(img_x)
-                grid[2].set_title('X plane')
-            grid.cbar_axes[0].colorbar(im)
-            grid.axes_llc.set_yticks(np.arange(0, img_u.shape[0], 100))
-            # save the image
-            plt.savefig(output_folder+ 'multiview_' + img_name + '.png')
-            plt.close()
+        if img_u[0, 0] != -1:
+            im = grid[0].imshow(img_u)
+            grid[0].set_title('U plane')
+        if img_v[0, 0] != -1:
+            im = grid[1].imshow(img_v)
+            grid[1].set_title('V plane')
+        if img_x[0, 0] != -1:
+            im = grid[2].imshow(img_x)
+            grid[2].set_title('X plane')
+        grid.cbar_axes[0].colorbar(im)
+        grid.axes_llc.set_yticks(np.arange(0, img_u.shape[0], 100))
+        # save the image
+        plt.savefig(output_folder+ 'multiview_' + img_name + '.png')
+        plt.close()
 
 def save_samples_from_ds(dataset, labels, output_folder, name="img", n_samples_per_label=10):
     if not os.path.exists(output_folder):

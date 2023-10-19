@@ -159,8 +159,16 @@ if __name__=='__main__':
             decay_steps=10000,
             decay_rate=0.96)
 
+        # Create weights for the loss function to account for the unbalanced dataset
+        unique, counts = np.unique(dataset_label, return_counts=True)
+        l_weights = []
+        for i in range(len(unique)):
+            l_weights.append(dataset_label.shape[0]/counts[i]) 
+        print("Loss weights: ", l_weights)
+            
         model.compile(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
                         loss='categorical_crossentropy',
+                        loss_weights=l_weights,
                         metrics=['accuracy'])   
 
         # plot using tf.keras.utils.plot_model

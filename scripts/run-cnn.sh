@@ -1,7 +1,7 @@
 INPUT_FILE=/eos/user/d/dapullia/tp_dataset/snana/dataset/dataset_img.npy
 INPUT_LABEL=/eos/user/d/dapullia/tp_dataset/snana/dataset/dataset_label.npy
 OUTPUT_FOLDER=/eos/user/d/dapullia/cnn_approach/snana_hits/
-MODEL_NAME=model_unbalanced
+MODEL_NAME=model_weight_balanced2
 LOAD_MODEL=false
 BALANCE_TRAINING_SET=false
 
@@ -40,7 +40,7 @@ done
 # stop execution if fundamental variables are not set
 if [ -z "$INPUT_FILE" ] || [ -z "$OUTPUT_FOLDER" ]
 then
-    echo "Usage: ./run-classifier.sh -i <input_file> -o <output_folder> [-h]"
+    echo "Usage: ./run-cnn.sh -i <input_file> -o <output_folder> [-h]"
     exit 0
 fi
 
