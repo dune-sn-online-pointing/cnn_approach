@@ -3,7 +3,6 @@ INPUT_LABEL=/eos/user/d/dapullia/tp_dataset/snana/dataset/dataset_label.npy
 OUTPUT_FOLDER=/eos/user/d/dapullia/cnn_approach/snana_hits/
 MODEL_NAME=model_weight_balanced2
 LOAD_MODEL=false
-BALANCE_TRAINING_SET=false
 
 
 # Function to print help message
@@ -51,15 +50,7 @@ else
     LOAD_MODEL_FLAG=""
 fi
 
-# if balance_training_set is true then add --balance_training_set
-
-if [ "$BALANCE_TRAINING_SET" = true ] ; then
-    BALANCE_TRAINING_SET_FLAG="--balance_training_set"
-else
-    BALANCE_TRAINING_SET_FLAG=""
-fi
-
 # move to the folder, run and come back to scripts
 cd ../python/
-python cnn2d_classifier.py --input_data $INPUT_FILE --input_label $INPUT_LABEL --output_folder $OUTPUT_FOLDER --model_name $MODEL_NAME $LOAD_MODEL_FLAG $BALANCE_TRAINING_SET_FLAG
+python cnn2d_classifier.py --input_data $INPUT_FILE --input_label $INPUT_LABEL --output_folder $OUTPUT_FOLDER --model_name $MODEL_NAME $LOAD_MODEL_FLAG
 cd ../scripts

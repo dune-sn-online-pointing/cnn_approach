@@ -31,7 +31,6 @@ parser.add_argument("--input_label", help="input label file", default="/eos/user
 parser.add_argument("--output_folder", help="save path", default="/eos/user/d/dapullia/tp_dataset/", type=str)
 parser.add_argument("--model_name", help="model name", default="model.h5", type=str)
 parser.add_argument('--load_model', action='store_true', help='save the model')
-parser.add_argument("--balance_training_set", action='store_true', help="balance the training set")
 
 args = parser.parse_args()
 input_data = args.input_data
@@ -39,7 +38,6 @@ input_label = args.input_label
 output_folder = args.output_folder
 model_name = args.model_name
 load_model = args.load_model
-balance_training_set = args.balance_training_set
 
 
 if __name__=='__main__':
@@ -80,22 +78,6 @@ if __name__=='__main__':
     index = np.where(dataset_label == 10)
     dataset_img = np.delete(dataset_img, index, axis=0)
     dataset_label = np.delete(dataset_label, index, axis=0)
-
-    # If balance_training_set is true, balance the training set removing 80% of the images with label 1 
-    if balance_training_set:
-        print("Balancing the training set...")
-        print("Dataset_img shape before: ", dataset_img.shape)
-        print("Dataset_lab shape before: ", dataset_label.shape)
-        index = np.where(dataset_label == 1)
-        index = index[0]
-        np.random.shuffle(index)
-        index = index[:int(index.shape[0]*0.8)]
-        dataset_img = np.delete(dataset_img, index, axis=0)
-        dataset_label = np.delete(dataset_label, index, axis=0)
-        print("Dataset_img shape after: ", dataset_img.shape)
-        print("Dataset_lab shape after: ", dataset_label.shape)
-        print("Training set balanced.")
-
 
     print("Dataset_img shape after: ", dataset_img.shape)
     print("Dataset_lab shape after: ", dataset_label.shape)

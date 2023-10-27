@@ -49,7 +49,7 @@ def calculate_metrics( y_true, y_pred,):
     # calculate the confusion matrix, the accuracy, and the precision and recall 
     y_pred_am = np.argmax(y_pred, axis=1)
     y_true_am = np.argmax(y_true, axis=1)
-    cm = confusion_matrix(y_true_am, y_pred_am, )
+    cm = confusion_matrix(y_true_am, y_pred_am, normalize='true')
     accuracy = accuracy_score(y_true_am, y_pred_am)
     precision = precision_score(y_true_am, y_pred_am, average='macro')
     recall = recall_score(y_true_am, y_pred_am, average='macro')
@@ -114,7 +114,7 @@ def log_metrics(y_true, y_pred, label_names=[0,1,2,3,4,5,6,7,8,9], epoch=0, test
     for i in range(n_classes):
         fpr[i], tpr[i], _ = roc_curve(y_true[:, i], y_pred[:, i])
         roc_auc = auc(fpr[i], tpr[i])
-        plt.plot(fpr[i], tpr[i], lw=2, label='ROC curve of class {0} (area = {1:0.2f})'.format(i, roc_auc))
+        plt.plot(fpr[i], tpr[i], lw=2, label='ROC curve of class {0} (area = {1:0.2f})'.format(label_names[i], roc_auc))
 
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
     plt.xlabel('False Positive Rate')
@@ -189,6 +189,32 @@ def save_samples_from_ds(dataset, labels, output_folder, name="img", n_samples_p
         # save the images
         for i, sample in enumerate(samples):
             save_sample_img(sample, output_folder, name+"_"+str(label)+"_"+str(i))
+    # make one image for each label containing n_samples_per_label images, using plt suplot
+    fig= plt.figure(figsize=(20, 20))
+    for i, label in enumerate(labels_unique[0]):
+        grid = ImageGrid(fig, 111,          # as in plt.subplot(111)
+                nrows_ncols=(1,10),
+                axes_pad=0.5,
+                share_all=True,
+                cbar_location="right",
+                cbar_mode="single",
+                cbar_size="30%",
+                cbar_pad=0.25,
+                )   
+        indices = np.where(labels == label)[0]
+        indices = indices[:np.minimum(n_samples_per_label, indices.shape[0])]
+        samples = dataset[indices]
+        # save the images
+        plt.suptitle("Label: "+str(label), fontsize=25)
+
+        for j, sample in enumerate(samples):
+            im = grid[j].imshow(sample[:,:,0])
+            grid[j].set_title(j)
+
+        grid.cbar_axes[0].colorbar(im)
+        grid.axes_llc.set_yticks(np.arange(0, sample.shape[0], 100))
+        plt.savefig(output_folder+ 'all_'+str(label)+'.png')
+        plt.clf()
 
 def create_labels(dataset_label):
     # create more intelligent labels
