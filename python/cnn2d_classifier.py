@@ -15,6 +15,7 @@ from itertools import cycle
 from mpl_toolkits.axes_grid1 import ImageGrid
 import seaborn as sns
 import sys
+import hyperopt as hp
 
 sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
@@ -31,13 +32,16 @@ parser.add_argument("--input_label", help="input label file", default="/eos/user
 parser.add_argument("--output_folder", help="save path", default="/eos/user/d/dapullia/tp_dataset/", type=str)
 parser.add_argument("--model_name", help="model name", default="model.h5", type=str)
 parser.add_argument('--load_model', action='store_true', help='save the model')
+parser.add_argument('--hyperopt', action='store_true', help='use hyperopt')
 
 args = parser.parse_args()
 input_data = args.input_data
 input_label = args.input_label
 output_folder = args.output_folder
 model_name = args.model_name
+output_folder = output_folder + model_name + "/"
 load_model = args.load_model
+hyperopt = args.hyperopt
 
 
 if __name__=='__main__':
@@ -127,95 +131,201 @@ if __name__=='__main__':
     if not load_model or not os.path.exists(output_folder+model_name+".h5"):
         if not os.path.exists(output_folder+model_name+".h5"):
             print("Model not found, building a new one...")
-        # Build the model, cnn 2D
-        print("Building the model...")
-        model = cnn2d.build_model(n_classes=n_classes)
+        if not hyperopt:
+            # Build the model, cnn 2D
+            print("Building the model...")
+            # Create weights for the loss function to account for the unbalanced dataset
+            unique, counts = np.unique(dataset_label, return_counts=True)
+            l_weights = []
+            for i in range(len(unique)):
+                l_weights.append(dataset_label.shape[0]/counts[i]) 
+            print("Loss weights: ", l_weights)
 
+            parameters = {
+                'n_conv_layers': 3,
+                'n_dense_layers': 2,
+                'n_filters': 64,
+                'kernel_size': 3,
+                'n_dense_units': 128,
+                'learning_rate': 0.1,
+                'decay_rate': 0.96,
+                'pool_size': 5,
+                'loss_weights': l_weights
+            }
+            model, history = cnn2d.build_model(n_classes=n_classes, train_images=train_images, train_labels=train_labels, parameters=parameters)
+            print("Model built.")
+            # Evaluate the model
+            print("Evaluating the model...")
+            test_loss, test_acc = model.evaluate(test_images, test_labels, batch_size=32)
+            print("Model evaluated.")
+            print('Test accuracy:', test_acc)
+            print('Test loss:', test_loss)
 
-        # Compile the model
-        print("Compiling the model...")
-        # add learning ratescheduler
+            # Plot the training and validation loss
+            print("Plotting the training and validation loss...")
+            history_dict = history.history
+            loss_values = history_dict['loss']
+            val_loss_values = history_dict['val_loss']
+            acc_values = history_dict['accuracy']
+            val_acc_values = history_dict['val_accuracy']
+            epochs = range(1, len(loss_values) + 1)
+            plt.figure()
+            plt.plot(epochs, loss_values, 'bo', label='Training loss')  # bo = blue dot
+            plt.plot(epochs, val_loss_values, 'b', label='Validation loss')  # b = "solid blue line"
+            plt.title('Training and validation loss')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.legend()
+            plt.savefig(output_folder+model_name+"_loss.png")
+            plt.figure()
+            plt.plot(epochs, acc_values, 'bo', label='Training accuracy')  # bo = blue dot
+            plt.plot(epochs, val_acc_values, 'b', label='Validation accuracy')  # b = "solid blue line"
+            plt.title('Training and validation accuracy')
+            plt.xlabel('Epochs')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.savefig(output_folder+model_name+"_accuracy.png")
+            print("Plot saved.")
 
-        lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-            initial_learning_rate=1e-1,
-            decay_steps=10000,
-            decay_rate=0.96)
+            # Save the model
+            print("Saving the model...")
+            model.save(output_folder+model_name+".h5")
+            print("Model saved.")
+        else:
+            print("Hyperopt mode...")
+            # Hyperopt
+            # Define the search space
+            unique, counts = np.unique(dataset_label, return_counts=True)
+            l_weights = []
+            for i in range(len(unique)):
+                l_weights.append(dataset_label.shape[0]/counts[i]) 
+            print("Loss weights: ", l_weights)
+            space_options = {
+                'n_conv_layers': [3, 4, 5],
+                'n_dense_layers': [2, 3, 4],
+                'n_filters': [32, 64, 128],
+                'kernel_size': [1],
+                'n_dense_units': [64, 128, 256],
+                'learning_rate': [0.001, 0.1],
+                'decay_rate': [0.9, 0.99],
+                # 'pool_size': [3, 5, 10, 30],
+                'loss_weights': [l_weights]
+            }
 
-        # Create weights for the loss function to account for the unbalanced dataset
-        unique, counts = np.unique(dataset_label, return_counts=True)
-        l_weights = []
-        for i in range(len(unique)):
-            l_weights.append(dataset_label.shape[0]/counts[i]) 
-        print("Loss weights: ", l_weights)
-            
-        model.compile(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
-                        loss='categorical_crossentropy',
-                        loss_weights=l_weights,
-                        metrics=['accuracy'])   
+            space = {
+                'n_conv_layers': hp.hp.choice('n_conv_layers', space_options['n_conv_layers']),
+                'n_dense_layers': hp.hp.choice('n_dense_layers', space_options['n_dense_layers']),
+                'n_filters': hp.hp.choice('n_filters', space_options['n_filters']),
+                'kernel_size': hp.hp.choice('kernel_size', space_options['kernel_size']),
+                'n_dense_units': hp.hp.choice('n_dense_units', space_options['n_dense_units']),
+                'learning_rate': hp.hp.uniform('learning_rate', space_options['learning_rate'][0], space_options['learning_rate'][1]),
+                'decay_rate': hp.hp.uniform('decay_rate', space_options['decay_rate'][0], space_options['decay_rate'][1]),
+                # 'pool_size': hp.hp.choice('pool_size', space_options['pool_size']),
+                'loss_weights': hp.hp.choice('loss_weights', space_options['loss_weights'])
+            }
+            trials = hp.Trials()
+            # Run the hyperparameter search
+            print("Running the hyperparameter search...")
+            best = hp.fmin(
+                fn=lambda x: cnn2d.hypertest_model( parameters=x, n_classes=n_classes, x_train = train_images, y_train = train_labels, x_test = test_images, y_test = test_labels),  # objective function   
+                space=space,
+                algo=hp.tpe.suggest,
+                max_evals=15,
+                trials=trials
+            )
+            print("Hyperparameter search done.")
+            # Get the best parameters
+            print("Getting the best parameters...")
+            best_dict = {
+                'n_conv_layers': space_options['n_conv_layers'][best['n_conv_layers']],
+                'n_dense_layers': space_options['n_dense_layers'][best['n_dense_layers']],
+                'n_filters': space_options['n_filters'][best['n_filters']],
+                'kernel_size': space_options['kernel_size'][best['kernel_size']],
+                'n_dense_units': space_options['n_dense_units'][best['n_dense_units']],
+                'learning_rate': best['learning_rate'],
+                'decay_rate': best['decay_rate'],
+                # 'pool_size': space_options['pool_size'][best['pool_size']],
+                'loss_weights': space_options['loss_weights'][best['loss_weights']]
+            }
 
-        # plot using tf.keras.utils.plot_model
-        tf.keras.utils.plot_model(model, to_file=output_folder+model_name+".png", show_shapes=True, show_layer_names=True)
+            print("Best parameters: ", best_dict)
+            print("Best loss: ", -trials.best_trial['result']['loss'])
 
-        print("Model compiled.")
+            print("Best parameters saved.")
 
-        print("Model built.")
+            # Save the trials
+            print("Saving the trials...")
+            np.save(output_folder+model_name+"_trials.npy", trials)
+            print("Trials saved.")
+            # Save the best parameters
+            print("Saving the best parameters...")
+            np.save(output_folder+model_name+"_best.npy", best)
+            print("Best parameters saved.")
+            # Save the best model
+            print("Saving the best model...")
+            model, history = cnn2d.build_model(n_classes=n_classes, train_images=train_images, train_labels=train_labels, parameters=best)
+            model.save(output_folder+model_name+".h5")
+            print("Best model saved.")
 
-
-        # Train the model
-        print("Training the model...")
-
-        callbacks = [
-            keras.callbacks.EarlyStopping(
-                # Stop training when `val_loss` is no longer improving
-                monitor='val_loss',
-                # "no longer improving" being further defined as "for at least 2 epochs"
-                patience=8,
-                verbose=1)
-        ]
-
-
-        history = model.fit(train_images, train_labels, epochs=500, batch_size=32, validation_data=(test_images, test_labels), callbacks=callbacks)
-        print("Model trained.")
-
-        # Evaluate the model
-        print("Evaluating the model...")
-        test_loss, test_acc = model.evaluate(test_images, test_labels, batch_size=32)
-        print("Model evaluated.")
-        print('Test accuracy:', test_acc)
-        print('Test loss:', test_loss)
-
-        # Plot the training and validation loss
-        print("Plotting the training and validation loss...")
-        history_dict = history.history
-        loss_values = history_dict['loss']
-        val_loss_values = history_dict['val_loss']
-        acc_values = history_dict['accuracy']
-        val_acc_values = history_dict['val_accuracy']
-        epochs = range(1, len(loss_values) + 1)
-        plt.figure()
-        plt.plot(epochs, loss_values, 'bo', label='Training loss')  # bo = blue dot
-        plt.plot(epochs, val_loss_values, 'b', label='Validation loss')  # b = "solid blue line"
-        plt.title('Training and validation loss')
-        plt.xlabel('Epochs')
-        plt.ylabel('Loss')
-        plt.legend()
-        plt.savefig(output_folder+model_name+"_loss.png")
-        plt.figure()
-        plt.plot(epochs, acc_values, 'bo', label='Training accuracy')  # bo = blue dot
-        plt.plot(epochs, val_acc_values, 'b', label='Validation accuracy')  # b = "solid blue line"
-        plt.title('Training and validation accuracy')
-        plt.xlabel('Epochs')
-        plt.ylabel('Accuracy')
-        plt.legend()
-        plt.savefig(output_folder+model_name+"_accuracy.png")
-        print("Plot saved.")
-
-        # Save the model
-        print("Saving the model...")
-        model.save(output_folder+model_name+".h5")
-        print("Model saved.")
-
-
+            # plot the hyperparameter search
+            print("Plotting the hyperparameter search...")
+            plt.figure(figsize=(15, 15))
+            plt.suptitle('Hyperparameters tuning')
+            plt.subplot(3, 3, 1)
+            plt.title('Accuracy vs n_conv_layers')
+            plt.scatter([t['misc']['vals']['n_conv_layers'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_conv_layers')
+            plt.xlabel('n_conv_layers')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 2)
+            plt.title('Accuracy vs n_dense_layers')
+            plt.scatter([t['misc']['vals']['n_dense_layers'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_dense_layers')
+            plt.xlabel('n_dense_layers')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 3)
+            plt.title('Accuracy vs n_filters')
+            plt.scatter([t['misc']['vals']['n_filters'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_filters')
+            plt.xlabel('n_filters')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 4)
+            plt.title('Accuracy vs kernel_size')
+            plt.scatter([t['misc']['vals']['kernel_size'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='kernel_size')
+            plt.xlabel('kernel_size')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 5)
+            plt.title('Accuracy vs n_dense_units')
+            plt.scatter([t['misc']['vals']['n_dense_units'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_dense_units')
+            plt.xlabel('n_dense_units')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 6)
+            plt.title('Accuracy vs learning_rate')
+            plt.scatter([t['misc']['vals']['learning_rate'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='learning_rate')
+            plt.xlabel('learning_rate')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 7)
+            plt.title('Accuracy vs decay_rate')
+            plt.scatter([t['misc']['vals']['decay_rate'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='decay_rate')
+            plt.xlabel('decay_rate')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 8)
+            plt.title('Accuracy vs loss_weights')
+            plt.scatter([t['misc']['vals']['loss_weights'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='loss_weights')
+            plt.xlabel('loss_weights')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.subplot(3, 3, 9)
+            plt.title('Accuracy vs Trial ID')
+            plt.scatter([t['tid'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='Loss')
+            plt.xlabel('Trial ID')
+            plt.ylabel('Accuracy')
+            plt.legend()
+            plt.savefig(output_folder+model_name+"_hyperopt_evolution.png")
     else:
         # Load the model
         model = keras.models.load_model(output_folder+model_name+".h5")

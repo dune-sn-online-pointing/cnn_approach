@@ -15,35 +15,68 @@ from itertools import cycle
 from mpl_toolkits.axes_grid1 import ImageGrid
 import seaborn as sns
 import sys
+import hyperopt as hp
+
 sys.path.append('../../online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
 
 
-def build_model(n_classes):
+def build_model(n_classes, train_images, train_labels, parameters):
 
     model = tf.keras.Sequential()
 
     model.add(layers.Conv2D(32, (30, 3), activation='relu', input_shape=(1000, 70, 1)))
-    model.add(layers.Conv2D(32, (30, 3), activation='relu'))
-    # shape: (1000, 70, 32)
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.MaxPooling2D((5, 2)))
-    # shape: (200, 35, 32)
-    model.add(layers.Conv2D(64, (30, 3), activation='relu'))
-    # shape: (171, 33, 64)
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.MaxPooling2D((5, 2)))
-    # shape: (34, 16, 64)
-    model.add(layers.Conv2D(128, (30, 3), activation='relu'))
-    # shape: (5, 14, 128)
+
+    for i in range(parameters['n_conv_layers']):
+        model.add(layers.Conv2D(parameters['n_filters']//(i+1), (parameters['kernel_size'], 1), activation='relu'))
+        model.add(layers.LeakyReLU(alpha=0.1))
+        model.add(layers.MaxPooling2D((5, 2)))
+    
     model.add(layers.Flatten())
-    model.add(layers.Dense(128, activation='relu'))
-    model.add(layers.LeakyReLU(alpha=0.1))
-    model.add(layers.Dense(64, activation='linear'))
-    model.add(layers.LeakyReLU(alpha=0.1))
+    for i in range(parameters['n_dense_layers']):
+        model.add(layers.Dense(parameters['n_dense_units']//(i+1), activation='relu'))
+        model.add(layers.LeakyReLU(alpha=0.1))
+    
+    model.add(layers.Dense(parameters['n_dense_units']//parameters['n_dense_layers'], activation='linear'))
     model.add(layers.Dense(n_classes, activation='softmax'))  
 
-    return model
+    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=parameters['learning_rate'],
+        decay_steps=10000,
+        decay_rate=parameters['decay_rate'])
+    
+    model.compile(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
+                loss='categorical_crossentropy',
+                loss_weights=parameters['loss_weights'],
+                metrics=['accuracy'])   
+
+    callbacks = [
+        keras.callbacks.EarlyStopping(
+            # Stop training when `val_loss` is no longer improving
+            monitor='val_loss',
+            # "no longer improving" being further defined as "for at least 2 epochs"
+            patience=5,
+            verbose=1)
+    ]
+
+    train_val_split = 0.8   
+    train_val_split_index = int(train_images.shape[0]*train_val_split)
+    train_images, val_images = train_images[:train_val_split_index], train_images[train_val_split_index:]
+    train_labels, val_labels = train_labels[:train_val_split_index], train_labels[train_val_split_index:]
+
+
+
+    history = model.fit(train_images, train_labels, epochs=500, batch_size=32, validation_data=(val_images, val_labels), callbacks=callbacks, verbose=0)
+
+    return model, history
+
+def hypertest_model(parameters, x_train, y_train, x_test, y_test, n_classes):
+    model,_=build_model(n_classes=n_classes, train_images=x_train, train_labels=y_train, parameters=parameters)
+    loss, accuracy=model.evaluate(x_test, y_test)
+    return {'loss': -accuracy, 'status': hp.STATUS_OK}
+
+
+
 
 def calculate_metrics( y_true, y_pred,):
     # calculate the confusion matrix, the accuracy, and the precision and recall 

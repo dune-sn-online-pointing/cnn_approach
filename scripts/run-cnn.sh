@@ -1,9 +1,9 @@
 INPUT_FILE=/eos/user/d/dapullia/tp_dataset/snana/dataset/dataset_img.npy
 INPUT_LABEL=/eos/user/d/dapullia/tp_dataset/snana/dataset/dataset_label.npy
 OUTPUT_FOLDER=/eos/user/d/dapullia/cnn_approach/snana_hits/
-MODEL_NAME=model_weight_balanced2
+MODEL_NAME=model_hyperopt
 LOAD_MODEL=false
-
+HYPEROPT=true
 
 # Function to print help message
 print_help() {
@@ -15,6 +15,9 @@ print_help() {
     echo "*****************************************************************************"
     exit 0
 }
+
+export PYTHONPATH=$PYTHONPATH:/afs/cern.ch/work/d/dapullia/public/dune/cnn_approach/external-libs/lib/python3.9/site-packages
+
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
@@ -50,7 +53,14 @@ else
     LOAD_MODEL_FLAG=""
 fi
 
+# if hyperopt is true then add --hyperopt
+if [ "$HYPEROPT" = true ] ; then
+    HYPEROPT_FLAG="--hyperopt"
+else
+    HYPEROPT_FLAG=""
+fi
+
 # move to the folder, run and come back to scripts
 cd ../python/
-python cnn2d_classifier.py --input_data $INPUT_FILE --input_label $INPUT_LABEL --output_folder $OUTPUT_FOLDER --model_name $MODEL_NAME $LOAD_MODEL_FLAG
+python cnn2d_classifier.py --input_data $INPUT_FILE --input_label $INPUT_LABEL --output_folder $OUTPUT_FOLDER --model_name $MODEL_NAME $LOAD_MODEL_FLAG $HYPEROPT_FLAG
 cd ../scripts
