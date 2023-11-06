@@ -204,7 +204,7 @@ if __name__=='__main__':
                 'n_conv_layers': [3, 4, 5],
                 'n_dense_layers': [2, 3, 4],
                 'n_filters': [32, 64, 128],
-                'kernel_size': [1],
+                'kernel_size': [1, 3, 5],
                 'n_dense_units': [64, 128, 256],
                 'learning_rate': [0.001, 0.1],
                 'decay_rate': [0.9, 0.99],
@@ -263,12 +263,15 @@ if __name__=='__main__':
             print("Best parameters saved.")
             # Save the best model
             print("Saving the best model...")
-            model, history = cnn2d.build_model(n_classes=n_classes, train_images=train_images, train_labels=train_labels, parameters=best)
+            model, history = cnn2d.build_model(n_classes=n_classes, train_images=train_images, train_labels=train_labels, parameters=best_dict)
             model.save(output_folder+model_name+".h5")
             print("Best model saved.")
 
             # plot the hyperparameter search
             print("Plotting the hyperparameter search...")
+            # remove the trials with impossible loss
+            trials = [t for t in trials.trials if t['result']['loss'] != 9999]
+            
             plt.figure(figsize=(15, 15))
             plt.suptitle('Hyperparameters tuning')
             plt.subplot(3, 3, 1)

@@ -21,21 +21,40 @@ sys.path.append('../../online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
 
 
+def is_compatible(parameters):
+    shape = (1000, 70, 1)
+    # account for the first conv2d layer
+    shape = (shape[0] - 30 + 1, shape[1] - 1, shape[2])
+    for i in range(parameters['n_conv_layers']):
+        # account for the conv2d layer
+        shape = (shape[0] - parameters['kernel_size'] + 1, shape[1] - 1, shape[2])
+        # account for the maxpooling layer
+        shape = (shape[0]//5, shape[1]//2, shape[2])
+    
+    # account for the flatten layer
+    shape = (shape[0]*shape[1]*shape[2],)
+    if shape[0] <= 0:
+        return False
+    else:
+        return shape
+
+
 def build_model(n_classes, train_images, train_labels, parameters):
 
+    
     model = tf.keras.Sequential()
 
     model.add(layers.Conv2D(32, (30, 3), activation='relu', input_shape=(1000, 70, 1)))
-
+    
     for i in range(parameters['n_conv_layers']):
         model.add(layers.Conv2D(parameters['n_filters']//(i+1), (parameters['kernel_size'], 1), activation='relu'))
-        model.add(layers.LeakyReLU(alpha=0.1))
+        model.add(layers.LeakyReLU(alpha=0.05))
         model.add(layers.MaxPooling2D((5, 2)))
     
     model.add(layers.Flatten())
     for i in range(parameters['n_dense_layers']):
         model.add(layers.Dense(parameters['n_dense_units']//(i+1), activation='relu'))
-        model.add(layers.LeakyReLU(alpha=0.1))
+        model.add(layers.LeakyReLU(alpha=0.05))
     
     model.add(layers.Dense(parameters['n_dense_units']//parameters['n_dense_layers'], activation='linear'))
     model.add(layers.Dense(n_classes, activation='softmax'))  
@@ -71,6 +90,11 @@ def build_model(n_classes, train_images, train_labels, parameters):
     return model, history
 
 def hypertest_model(parameters, x_train, y_train, x_test, y_test, n_classes):
+    is_comp=is_compatible(parameters)
+    if not is_comp:
+        return {'loss': 9999, 'status': hp.STATUS_FAIL}
+    else:
+        print(is_comp)
     model,_=build_model(n_classes=n_classes, train_images=x_train, train_labels=y_train, parameters=parameters)
     loss, accuracy=model.evaluate(x_test, y_test)
     return {'loss': -accuracy, 'status': hp.STATUS_OK}
