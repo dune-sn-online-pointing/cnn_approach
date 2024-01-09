@@ -21,7 +21,7 @@ sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/online-pointing-utils/
 import create_images_from_tps_libs as tp2img
 import cnn2d_classifier_libs as cnn2d
 
-# Set seed for reproducibility
+# Set seed for reproducibility  
 seed = 42
 np.random.seed(seed)
 tf.random.set_seed(seed)
@@ -33,6 +33,7 @@ parser.add_argument("--output_folder", help="save path", default="/eos/user/d/da
 parser.add_argument("--model_name", help="model name", default="model.h5", type=str)
 parser.add_argument('--load_model', action='store_true', help='save the model')
 parser.add_argument('--hyperopt', action='store_true', help='use hyperopt')
+parser.add_argument('--hp_max_evals', help='max number of hyperopt evaluations', default=10, type=int)
 
 args = parser.parse_args()
 input_data = args.input_data
@@ -42,6 +43,7 @@ model_name = args.model_name
 output_folder = output_folder + model_name + "/"
 load_model = args.load_model
 hyperopt = args.hyperopt
+hp_max_evals = args.hp_max_evals
 
 
 if __name__=='__main__':
@@ -63,11 +65,14 @@ if __name__=='__main__':
 
     # Load the dataset
     print("Loading the dataset...")
-    dataset_img = np.load(input_data)
+    dataset_img = np.load(input_data, allow_pickle=True)
     dataset_label = np.load(input_label)
     print("Dataset loaded.")
     print("Dataset_img shape: ", dataset_img.shape)
     print("Dataset_lab shape: ", dataset_label.shape)
+
+    print("dataset_img type: ", type(dataset_img))
+    print("dataset_lab type: ", type(dataset_label))
 
     # Check if the dimension of images and labels are the same
     if dataset_img.shape[0] != dataset_label.shape[0]:
@@ -76,10 +81,10 @@ if __name__=='__main__':
 
     # Remove the images with label 10
     print("Different labels: ", np.unique(dataset_label, return_counts=True))
-    print("Removing the images with label 10...")
+    print("Removing the images with label 99...")
     print("Dataset_img shape before: ", dataset_img.shape)
     print("Dataset_lab shape before: ", dataset_label.shape)
-    index = np.where(dataset_label == 10)
+    index = np.where(dataset_label == 99)
     dataset_img = np.delete(dataset_img, index, axis=0)
     dataset_label = np.delete(dataset_label, index, axis=0)
 
@@ -88,9 +93,12 @@ if __name__=='__main__':
     print("Images with label 10 removed.")
 
     # Create more intelligent labels
+    print("Labels unique: ", np.unique(dataset_label, return_counts=True))  
+
     print("Creating labels...")
     dataset_label, label_names, n_classes = cnn2d.create_labels(dataset_label)
     print("Labels created.")
+    print("Labels unique: ", np.unique(dataset_label, return_counts=True))  
 
     # shuffle the dataset
     print("Shuffling the dataset...")
@@ -100,10 +108,10 @@ if __name__=='__main__':
     dataset_label = dataset_label[index]
     print("Dataset shuffled.")
 
-    # Save some images
-    print("Saving some images...")
-    cnn2d.save_samples_from_ds(dataset_img, dataset_label, output_folder+"samples/", name="img", n_samples_per_label=10)
-    print("Images saved.")
+    # # Save some images
+    # print("Saving some images...")
+    # cnn2d.save_samples_from_ds(dataset_img, dataset_label, output_folder+"samples/", name="img", n_samples_per_label=10)
+    # print("Images saved.")
 
 
     # Split the dataset in training and test
@@ -153,6 +161,7 @@ if __name__=='__main__':
                 'loss_weights': l_weights
             }
             model, history = cnn2d.build_model(n_classes=n_classes, train_images=train_images, train_labels=train_labels, parameters=parameters)
+            # model, history = cnn2d.build_model_sparse_expe(n_classes=n_classes, train_images=train_images, train_labels=train_labels, parameters=parameters)
             print("Model built.")
             # Evaluate the model
             print("Evaluating the model...")
@@ -201,13 +210,13 @@ if __name__=='__main__':
                 l_weights.append(dataset_label.shape[0]/counts[i]) 
             print("Loss weights: ", l_weights)
             space_options = {
-                'n_conv_layers': [3, 4, 5],
+                'n_conv_layers': [1, 2, 3, 4, 5],
                 'n_dense_layers': [2, 3, 4],
-                'n_filters': [32, 64, 128],
+                'n_filters': [16, 32, 64, 128],
                 'kernel_size': [1, 3, 5],
-                'n_dense_units': [64, 128, 256],
+                'n_dense_units': [32, 64, 128, 256],
                 'learning_rate': [0.001, 0.1],
-                'decay_rate': [0.9, 0.99],
+                'decay_rate': [0.9, 0.999],
                 # 'pool_size': [3, 5, 10, 30],
                 'loss_weights': [l_weights]
             }
@@ -227,10 +236,10 @@ if __name__=='__main__':
             # Run the hyperparameter search
             print("Running the hyperparameter search...")
             best = hp.fmin(
-                fn=lambda x: cnn2d.hypertest_model( parameters=x, n_classes=n_classes, x_train = train_images, y_train = train_labels, x_test = test_images, y_test = test_labels),  # objective function   
+                fn=lambda x: cnn2d.hypertest_model( parameters=x, n_classes=n_classes, x_train = train_images, y_train = train_labels, x_test = test_images, y_test = test_labels, output_folder=output_folder),  # objective function   
                 space=space,
                 algo=hp.tpe.suggest,
-                max_evals=15,
+                max_evals=hp_max_evals,
                 trials=trials
             )
             print("Hyperparameter search done.")
@@ -276,55 +285,55 @@ if __name__=='__main__':
             plt.suptitle('Hyperparameters tuning')
             plt.subplot(3, 3, 1)
             plt.title('Accuracy vs n_conv_layers')
-            plt.scatter([t['misc']['vals']['n_conv_layers'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_conv_layers')
+            plt.scatter([t['misc']['vals']['n_conv_layers'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('n_conv_layers')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 2)
             plt.title('Accuracy vs n_dense_layers')
-            plt.scatter([t['misc']['vals']['n_dense_layers'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_dense_layers')
+            plt.scatter([t['misc']['vals']['n_dense_layers'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('n_dense_layers')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 3)
             plt.title('Accuracy vs n_filters')
-            plt.scatter([t['misc']['vals']['n_filters'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_filters')
+            plt.scatter([t['misc']['vals']['n_filters'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('n_filters')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 4)
             plt.title('Accuracy vs kernel_size')
-            plt.scatter([t['misc']['vals']['kernel_size'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='kernel_size')
+            plt.scatter([t['misc']['vals']['kernel_size'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('kernel_size')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 5)
             plt.title('Accuracy vs n_dense_units')
-            plt.scatter([t['misc']['vals']['n_dense_units'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='n_dense_units')
+            plt.scatter([t['misc']['vals']['n_dense_units'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('n_dense_units')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 6)
             plt.title('Accuracy vs learning_rate')
-            plt.scatter([t['misc']['vals']['learning_rate'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='learning_rate')
+            plt.scatter([t['misc']['vals']['learning_rate'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('learning_rate')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 7)
             plt.title('Accuracy vs decay_rate')
-            plt.scatter([t['misc']['vals']['decay_rate'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='decay_rate')
+            plt.scatter([t['misc']['vals']['decay_rate'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('decay_rate')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 8)
             plt.title('Accuracy vs loss_weights')
-            plt.scatter([t['misc']['vals']['loss_weights'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='loss_weights')
+            plt.scatter([t['misc']['vals']['loss_weights'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('loss_weights')
             plt.ylabel('Accuracy')
             plt.legend()
             plt.subplot(3, 3, 9)
             plt.title('Accuracy vs Trial ID')
-            plt.scatter([t['tid'] for t in trials.trials], [-t['result']['loss'] for t in trials.trials], label='Loss')
+            plt.scatter([t['tid'] for t in trials], [-t['result']['loss'] for t in trials], s=20, alpha=0.3, label='loss')
             plt.xlabel('Trial ID')
             plt.ylabel('Accuracy')
             plt.legend()

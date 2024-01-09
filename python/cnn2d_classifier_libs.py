@@ -12,6 +12,7 @@ from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, r
 from sklearn.preprocessing import label_binarize
 from scipy import interp
 from itertools import cycle
+from scipy import sparse
 from mpl_toolkits.axes_grid1 import ImageGrid
 import seaborn as sns
 import sys
@@ -38,13 +39,36 @@ def is_compatible(parameters):
     else:
         return shape
 
+def sparse_to_dense_layer(sparse_data, input_shape=(1000,70)):
+    shape_sparse = sparse_data.shape
+    dense=np.empty(shape=(shape_sparse[0], input_shape[0], input_shape[1]))
+    for i in range(shape_sparse[0]):
+        data, indices, indptr = sparse_data[i][0], sparse_data[i][1], sparse_data[i][2]
+        dense[i] = sparse.csr_matrix((data, indices, indptr), shape=input_shape).todense()
+    return dense
 
-def build_model(n_classes, train_images, train_labels, parameters):
 
-    
+def build_model_sparse_expe(n_classes, train_images, train_labels, parameters, input_shape=(1000,70,)):
+
+    # define a custom preprocessing layer that takes the input in a sparse format and returns a dense format
+    # train_images= sparse_to_dense_layer(train_images, input_shape)
+
+    # class SparseToDenseLayer(tf.keras.layers.Layer):
+    #     def __init__(self, my_input_shape):
+    #         # super(SparseToDenseLayer, self).__init()
+    #         self.my_input_shape = my_input_shape
+    #         self.trainable = False
+
+    #     def call(self, sparse_data):
+    #         shape_sparse = sparse_data.shape
+    #         dense=np.empty(shape=(shape_sparse[0], self.my_input_shape[0], self.my_input_shape[1]))
+    #         for i in range(shape_sparse[0]):
+    #             data, indices, indptr = sparse_data[i][0], sparse_data[i][1], sparse_data[i][2]
+    #             dense[i] = sparse.csr_matrix((data, indices, indptr), shape=self.my_input_shape).todense()
+    #         return dense
+        
     model = tf.keras.Sequential()
-
-    model.add(layers.Conv2D(32, (30, 3), activation='relu', input_shape=(1000, 70, 1)))
+    model.add(layers.Conv2D(32, (30, 3), activation='relu', input_shape=(1000, 70,1)))
     
     for i in range(parameters['n_conv_layers']):
         model.add(layers.Conv2D(parameters['n_filters']//(i+1), (parameters['kernel_size'], 1), activation='relu'))
@@ -89,7 +113,84 @@ def build_model(n_classes, train_images, train_labels, parameters):
 
     return model, history
 
-def hypertest_model(parameters, x_train, y_train, x_test, y_test, n_classes):
+
+def build_model(n_classes, train_images, train_labels, parameters):
+
+    # define a custom preprocessing layer that takes the input in a sparse format and returns a dense format
+
+    model = tf.keras.Sequential()
+
+    model.add(layers.Conv2D(16, (30, 3), activation='relu', input_shape=(300, 70, 1)))
+
+    # model.add(layers.Conv2D(16, (30, 3), activation='relu'))
+    # model.add(layers.LeakyReLU(alpha=0.05))
+    # model.add(layers.MaxPooling2D((2, 2)))
+
+    # model.add(layers.Conv2D(32, (30, 3), activation='relu'))
+    # model.add(layers.LeakyReLU(alpha=0.05))
+    # model.add(layers.MaxPooling2D((2, 2)))
+
+    # model.add(layers.Flatten())
+    # model.add(layers.Dense(64, activation='relu'))
+    # model.add(layers.LeakyReLU(alpha=0.05))
+    # model.add(layers.Dense(10, activation='relu'))
+
+
+    for i in range(parameters['n_conv_layers']):
+        model.add(layers.Conv2D(parameters['n_filters']//(i+1), (parameters['kernel_size'], 1), activation='relu'))
+        model.add(layers.LeakyReLU(alpha=0.05))
+        model.add(layers.MaxPooling2D((2, 2)))
+    
+    model.add(layers.Flatten())
+    for i in range(parameters['n_dense_layers']):
+        model.add(layers.Dense(parameters['n_dense_units']//(i+1), activation='relu'))
+        model.add(layers.LeakyReLU(alpha=0.05))
+    
+    model.add(layers.Dense(parameters['n_dense_units']//parameters['n_dense_layers'], activation='linear'))
+    model.add(layers.Dense(n_classes, activation='softmax'))  
+    # I have to do binary classification, so I use sigmoid
+    # model.add(layers.Dense(1, activation='sigmoid'))
+
+    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=parameters['learning_rate'],
+        decay_steps=10000,
+        decay_rate=parameters['decay_rate'])
+    
+    model.compile(
+        # optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
+        optimizer=keras.optimizers.Adam(learning_rate=lr_schedule),
+        # loss='binary_crossentropy',
+        loss='categorical_crossentropy',
+        loss_weights=parameters['loss_weights'],
+        metrics=['accuracy'])   
+
+    callbacks = [
+        keras.callbacks.EarlyStopping(
+            # Stop training when `val_loss` is no longer improving
+            monitor='val_loss',
+            # "no longer improving" being further defined as "for at least 2 epochs"
+            patience=5,
+            verbose=1)
+    ]
+
+    # # go from categorical to binary
+    # train_labels = np.argmax(train_labels, axis=1)
+
+    train_val_split = 0.8   
+    train_val_split_index = int(train_images.shape[0]*train_val_split)
+    train_images, val_images = train_images[:train_val_split_index], train_images[train_val_split_index:]
+    train_labels, val_labels = train_labels[:train_val_split_index], train_labels[train_val_split_index:]
+
+   # print types 
+    print("train_images shape: ", train_images.shape)
+    print("val_images shape: ", val_images.shape)
+
+    history = model.fit(train_images, train_labels, epochs=500, batch_size=32, validation_data=(val_images, val_labels), callbacks=callbacks, verbose=0)
+
+    return model, history
+
+
+def hypertest_model(parameters, x_train, y_train, x_test, y_test, n_classes, output_folder):
     is_comp=is_compatible(parameters)
     if not is_comp:
         return {'loss': 9999, 'status': hp.STATUS_FAIL}
@@ -97,6 +198,12 @@ def hypertest_model(parameters, x_train, y_train, x_test, y_test, n_classes):
         print(is_comp)
     model,_=build_model(n_classes=n_classes, train_images=x_train, train_labels=y_train, parameters=parameters)
     loss, accuracy=model.evaluate(x_test, y_test)
+    print("loss: ", loss, " accuracy: ", accuracy)
+    with open(output_folder+"hyperopt_progression.txt", "a") as f:
+        f.write(str(parameters)+"\n")
+        f.write("loss: "+str(loss)+"\n")
+        f.write("accuracy: "+str(accuracy)+"\n")
+        f.write("\n")
     return {'loss': -accuracy, 'status': hp.STATUS_OK}
 
 
