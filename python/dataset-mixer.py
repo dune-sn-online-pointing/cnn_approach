@@ -1,5 +1,6 @@
 import numpy as np
 import argparse
+import os
 
 seed = 42
 np.random.seed(seed)
@@ -105,5 +106,8 @@ if shuffle == 1:
 print(np.unique(labelset, return_counts=True))
 
 # save dataset and labelset
+if not os.path.exists(output_folder):
+    os.makedirs(output_folder)
+
 np.save(output_folder + "dataset_img.npy", dataset)
 np.save(output_folder + "dataset_label.npy", labelset)

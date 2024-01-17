@@ -108,10 +108,10 @@ if __name__=='__main__':
     dataset_label = dataset_label[index]
     print("Dataset shuffled.")
 
-    # # Save some images
-    # print("Saving some images...")
-    # cnn2d.save_samples_from_ds(dataset_img, dataset_label, output_folder+"samples/", name="img", n_samples_per_label=10)
-    # print("Images saved.")
+    # Save some images
+    print("Saving some images...")
+    cnn2d.save_samples_from_ds(dataset_img, dataset_label, output_folder+"samples/", name="img", n_samples_per_label=10)
+    print("Images saved.")
 
 
     # Split the dataset in training and test
@@ -155,7 +155,7 @@ if __name__=='__main__':
                 'n_filters': 64,
                 'kernel_size': 3,
                 'n_dense_units': 128,
-                'learning_rate': 0.1,
+                'learning_rate': 0.002,
                 'decay_rate': 0.96,
                 'pool_size': 5,
                 'loss_weights': l_weights
@@ -215,8 +215,8 @@ if __name__=='__main__':
                 'n_filters': [16, 32, 64, 128],
                 'kernel_size': [1, 3, 5],
                 'n_dense_units': [32, 64, 128, 256],
-                'learning_rate': [0.001, 0.1],
-                'decay_rate': [0.9, 0.999],
+                'learning_rate': [0.001, 0.01],
+                'decay_rate': [0.90, 0.999],
                 # 'pool_size': [3, 5, 10, 30],
                 'loss_weights': [l_weights]
             }
@@ -351,6 +351,10 @@ if __name__=='__main__':
     print("Calculating metrics...")
     cnn2d.log_metrics(test_labels, predictions, label_names=label_names, test=True, output_folder=output_folder, model_name=model_name)
     print("Metrics calculated.")
+    print("Drawing model...")
+    keras.utils.plot_model(model, output_folder+model_name+".png", show_shapes=True)
+    print("Model drawn.")
+
     print("Test done.")
 
 

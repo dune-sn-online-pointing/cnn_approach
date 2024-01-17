@@ -48,70 +48,70 @@ def sparse_to_dense_layer(sparse_data, input_shape=(1000,70)):
     return dense
 
 
-def build_model_sparse_expe(n_classes, train_images, train_labels, parameters, input_shape=(1000,70,)):
+# def build_model_sparse_expe(n_classes, train_images, train_labels, parameters, input_shape=(1000,70,)):
 
-    # define a custom preprocessing layer that takes the input in a sparse format and returns a dense format
-    # train_images= sparse_to_dense_layer(train_images, input_shape)
+#     # define a custom preprocessing layer that takes the input in a sparse format and returns a dense format
+#     # train_images= sparse_to_dense_layer(train_images, input_shape)
 
-    # class SparseToDenseLayer(tf.keras.layers.Layer):
-    #     def __init__(self, my_input_shape):
-    #         # super(SparseToDenseLayer, self).__init()
-    #         self.my_input_shape = my_input_shape
-    #         self.trainable = False
+#     # class SparseToDenseLayer(tf.keras.layers.Layer):
+#     #     def __init__(self, my_input_shape):
+#     #         # super(SparseToDenseLayer, self).__init()
+#     #         self.my_input_shape = my_input_shape
+#     #         self.trainable = False
 
-    #     def call(self, sparse_data):
-    #         shape_sparse = sparse_data.shape
-    #         dense=np.empty(shape=(shape_sparse[0], self.my_input_shape[0], self.my_input_shape[1]))
-    #         for i in range(shape_sparse[0]):
-    #             data, indices, indptr = sparse_data[i][0], sparse_data[i][1], sparse_data[i][2]
-    #             dense[i] = sparse.csr_matrix((data, indices, indptr), shape=self.my_input_shape).todense()
-    #         return dense
+#     #     def call(self, sparse_data):
+#     #         shape_sparse = sparse_data.shape
+#     #         dense=np.empty(shape=(shape_sparse[0], self.my_input_shape[0], self.my_input_shape[1]))
+#     #         for i in range(shape_sparse[0]):
+#     #             data, indices, indptr = sparse_data[i][0], sparse_data[i][1], sparse_data[i][2]
+#     #             dense[i] = sparse.csr_matrix((data, indices, indptr), shape=self.my_input_shape).todense()
+#     #         return dense
         
-    model = tf.keras.Sequential()
-    model.add(layers.Conv2D(32, (30, 3), activation='relu', input_shape=(1000, 70,1)))
+#     model = tf.keras.Sequential()
+#     model.add(layers.Conv2D(32, (30, 3), activation='relu', input_shape=(1000, 70,1)))
     
-    for i in range(parameters['n_conv_layers']):
-        model.add(layers.Conv2D(parameters['n_filters']//(i+1), (parameters['kernel_size'], 1), activation='relu'))
-        model.add(layers.LeakyReLU(alpha=0.05))
-        model.add(layers.MaxPooling2D((5, 2)))
+#     for i in range(parameters['n_conv_layers']):
+#         model.add(layers.Conv2D(parameters['n_filters']//(i+1), (parameters['kernel_size'], 1), activation='relu'))
+#         model.add(layers.LeakyReLU(alpha=0.05))
+#         model.add(layers.MaxPooling2D((5, 2)))
     
-    model.add(layers.Flatten())
-    for i in range(parameters['n_dense_layers']):
-        model.add(layers.Dense(parameters['n_dense_units']//(i+1), activation='relu'))
-        model.add(layers.LeakyReLU(alpha=0.05))
+#     model.add(layers.Flatten())
+#     for i in range(parameters['n_dense_layers']):
+#         model.add(layers.Dense(parameters['n_dense_units']//(i+1), activation='relu'))
+#         model.add(layers.LeakyReLU(alpha=0.05))
     
-    model.add(layers.Dense(parameters['n_dense_units']//parameters['n_dense_layers'], activation='linear'))
-    model.add(layers.Dense(n_classes, activation='softmax'))  
+#     model.add(layers.Dense(parameters['n_dense_units']//parameters['n_dense_layers'], activation='linear'))
+#     model.add(layers.Dense(n_classes, activation='softmax'))  
 
-    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-        initial_learning_rate=parameters['learning_rate'],
-        decay_steps=10000,
-        decay_rate=parameters['decay_rate'])
+#     lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+#         initial_learning_rate=parameters['learning_rate'],
+#         decay_steps=10000,
+#         decay_rate=parameters['decay_rate'])
     
-    model.compile(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
-                loss='categorical_crossentropy',
-                loss_weights=parameters['loss_weights'],
-                metrics=['accuracy'])   
+#     model.compile(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
+#                 loss='categorical_crossentropy',
+#                 loss_weights=parameters['loss_weights'],
+#                 metrics=['accuracy'])   
 
-    callbacks = [
-        keras.callbacks.EarlyStopping(
-            # Stop training when `val_loss` is no longer improving
-            monitor='val_loss',
-            # "no longer improving" being further defined as "for at least 2 epochs"
-            patience=5,
-            verbose=1)
-    ]
+#     callbacks = [
+#         keras.callbacks.EarlyStopping(
+#             # Stop training when `val_loss` is no longer improving
+#             monitor='val_loss',
+#             # "no longer improving" being further defined as "for at least 2 epochs"
+#             patience=5,
+#             verbose=1)
+#     ]
 
-    train_val_split = 0.8   
-    train_val_split_index = int(train_images.shape[0]*train_val_split)
-    train_images, val_images = train_images[:train_val_split_index], train_images[train_val_split_index:]
-    train_labels, val_labels = train_labels[:train_val_split_index], train_labels[train_val_split_index:]
+#     train_val_split = 0.8   
+#     train_val_split_index = int(train_images.shape[0]*train_val_split)
+#     train_images, val_images = train_images[:train_val_split_index], train_images[train_val_split_index:]
+#     train_labels, val_labels = train_labels[:train_val_split_index], train_labels[train_val_split_index:]
 
 
 
-    history = model.fit(train_images, train_labels, epochs=500, batch_size=32, validation_data=(val_images, val_labels), callbacks=callbacks, verbose=0)
+#     history = model.fit(train_images, train_labels, epochs=500, batch_size=32, validation_data=(val_images, val_labels), callbacks=callbacks, verbose=0)
 
-    return model, history
+#     return model, history
 
 
 def build_model(n_classes, train_images, train_labels, parameters):
