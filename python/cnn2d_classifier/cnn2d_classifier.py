@@ -19,6 +19,7 @@ import hyperopt as hp
 
 sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
+sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/cnn_approach/python/libs/')
 import cnn2d_classifier_libs as cnn2d
 
 # Set seed for reproducibility  

@@ -1,6 +1,6 @@
-INPUT_FILE=/eos/user/d/dapullia/tp_dataset/emaprod/new_labelsdataset/dataset_img.npy
-INPUT_LABEL=/eos/user/d/dapullia/tp_dataset/emaprod/new_labelsdataset/dataset_label.npy
-OUTPUT_FOLDER=/eos/user/d/dapullia/cnn_approach/emaprod/3-1-maintrack-vs-all/
+INPUT_FILE=/eos/user/d/dapullia/cnn_approach/emaprod/es-direction-cut/dataset_img.npy
+INPUT_LABEL=/eos/user/d/dapullia/cnn_approach/emaprod/es-direction-cut/dataset_label.npy
+OUTPUT_FOLDER=/eos/user/d/dapullia/cnn_approach/emaprod/es-direction-cut/
 MODEL_NAME=model
 LOAD_MODEL=false
 HYPEROPT=true
@@ -61,6 +61,6 @@ else
 fi
 
 # move to the folder, run and come back to scripts
-cd ../python/
+cd ../python/cnn2d_classifier/
 python cnn2d_classifier.py --input_data $INPUT_FILE --input_label $INPUT_LABEL --output_folder $OUTPUT_FOLDER --model_name $MODEL_NAME $LOAD_MODEL_FLAG $HYPEROPT_FLAG --hp_max_evals $HP_MAX_EVALS
 cd ../scripts

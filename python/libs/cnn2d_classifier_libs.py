@@ -254,7 +254,7 @@ def log_metrics(y_true, y_pred, label_names=[0,1,2,3,4,5,6,7,8,9], epoch=0, test
     # save confusion matrix 
     plt.figure(figsize=(10,10))
     plt.title("Confusion matrix")
-    sns.heatmap(cm, annot=True, cmap="YlGnBu", xticklabels=label_names, yticklabels=label_names)
+    sns.heatmap(cm, annot=True, cmap="YlGnBu", xticklabels=label_names, yticklabels=label_names, annot_kws={"fontsize": 20})
     plt.ylabel('True label')
     plt.xlabel('Predicted label')
     if test:
