@@ -20,7 +20,7 @@ import hyperopt as hp
 sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
 sys.path.append('/afs/cern.ch/work/d/dapullia/public/dune/cnn_approach/python/libs/')
-import cnn2d_classifier_libs as cnn2d
+import cnn2d_regression_libs as cnn2d
 
 # Set seed for reproducibility  
 seed = 42
@@ -350,8 +350,7 @@ if __name__=='__main__':
     print("Predictions unique: ", np.unique(np.argmax(predictions, axis=1), return_counts=True))
     # Calculate metrics
     print("Calculating metrics...")
-    cnn2d.log_metrics(test_labels, predictions, label_names=["sig","bkg+blip"], test=True, output_folder=output_folder, model_name=model_name)
-    # cnn2d.log_metrics(test_labels, predictions, label_names=label_names, test=True, output_folder=output_folder, model_name=model_name)
+    cnn2d.log_metrics(test_labels, predictions, label_names=label_names, test=True, output_folder=output_folder, model_name=model_name)
     print("Metrics calculated.")
     print("Drawing model...")
     keras.utils.plot_model(model, output_folder+model_name+".png", show_shapes=True)

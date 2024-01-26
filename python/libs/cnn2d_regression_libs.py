@@ -20,15 +20,7 @@ import hyperopt as hp
 
 sys.path.append('../../online-pointing-utils/python/tps_text_to_image')
 import create_images_from_tps_libs as tp2img
-import matplotlib.pylab as pylab
 
-params = {'legend.fontsize': 'x-large',
-          'figure.figsize': (10, 10),
-         'axes.labelsize': 'x-large',
-         'axes.titlesize':'x-large',
-         'xtick.labelsize':'x-large',
-         'ytick.labelsize':'x-large'}
-pylab.rcParams.update(params)
 
 def is_compatible(parameters):
     shape = (1000, 70, 1)
@@ -155,9 +147,9 @@ def build_model(n_classes, train_images, train_labels, parameters):
         model.add(layers.LeakyReLU(alpha=0.05))
     
     model.add(layers.Dense(parameters['n_dense_units']//parameters['n_dense_layers'], activation='linear'))
-    # model.add(layers.Dense(n_classes, activation='softmax'))  
+    model.add(layers.Dense(n_classes, activation='softmax'))  
     # I have to do binary classification, so I use sigmoid
-    model.add(layers.Dense(1, activation='sigmoid'))
+    # model.add(layers.Dense(1, activation='sigmoid'))
 
     lr_schedule = keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=parameters['learning_rate'],
@@ -167,8 +159,8 @@ def build_model(n_classes, train_images, train_labels, parameters):
     model.compile(
         # optimizer=keras.optimizers.SGD(learning_rate=lr_schedule),
         optimizer=keras.optimizers.Adam(learning_rate=lr_schedule),
-        loss='binary_crossentropy',
-        # loss='categorical_crossentropy',
+        # loss='binary_crossentropy',
+        loss='categorical_crossentropy',
         loss_weights=parameters['loss_weights'],
         metrics=['accuracy'])   
 
@@ -182,7 +174,7 @@ def build_model(n_classes, train_images, train_labels, parameters):
     ]
 
     # # go from categorical to binary
-    train_labels = np.argmax(train_labels, axis=1)
+    # train_labels = np.argmax(train_labels, axis=1)
 
     train_val_split = 0.8   
     train_val_split_index = int(train_images.shape[0]*train_val_split)
@@ -205,9 +197,7 @@ def hypertest_model(parameters, x_train, y_train, x_test, y_test, n_classes, out
     else:
         print(is_comp)
     model,_=build_model(n_classes=n_classes, train_images=x_train, train_labels=y_train, parameters=parameters)
-    # binary trick
-    loss, accuracy=model.evaluate(x_test, np.argmax(y_test, axis=1))
-    # loss, accuracy=model.evaluate(x_test, y_test)
+    loss, accuracy=model.evaluate(x_test, y_test)
     print("loss: ", loss, " accuracy: ", accuracy)
     with open(output_folder+"hyperopt_progression.txt", "a") as f:
         f.write(str(parameters)+"\n")
@@ -221,9 +211,7 @@ def hypertest_model(parameters, x_train, y_train, x_test, y_test, n_classes, out
 
 def calculate_metrics( y_true, y_pred,):
     # calculate the confusion matrix, the accuracy, and the precision and recall 
-    # binary trick
-    # y_pred_am = np.argmax(y_pred, axis=1)
-    y_pred_am = np.where(y_pred > 0.5, 1, 0)
+    y_pred_am = np.argmax(y_pred, axis=1)
     y_true_am = np.argmax(y_true, axis=1)
     cm = confusion_matrix(y_true_am, y_pred_am, normalize='true')
     accuracy = accuracy_score(y_true_am, y_pred_am)
@@ -265,12 +253,10 @@ def log_metrics(y_true, y_pred, label_names=[0,1,2,3,4,5,6,7,8,9], epoch=0, test
 
     # save confusion matrix 
     plt.figure(figsize=(10,10))
-    plt.title("Confusion matrix", fontsize=28)
+    plt.title("Confusion matrix")
     sns.heatmap(cm, annot=True, cmap="YlGnBu", xticklabels=label_names, yticklabels=label_names, annot_kws={"fontsize": 20})
-    plt.ylabel('True label', fontsize=28)
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
-    plt.xlabel('Predicted label', fontsize=28)
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
     if test:
         if not os.path.exists(output_folder+f"log/test/"):
             os.makedirs(output_folder+f"log/test/")
@@ -290,17 +276,15 @@ def log_metrics(y_true, y_pred, label_names=[0,1,2,3,4,5,6,7,8,9], epoch=0, test
 
     plt.figure()
     for i in range(n_classes):
-    # binary trick
-        fpr[i], tpr[i], _ = roc_curve(y_true[:, i], np.where(y_pred > 0.5, np.array([0,1]), np.array([1,0]))[:, i])
-        # fpr[i], tpr[i], _ = roc_curve(y_true[:, i], y_pred[:, i])
+        fpr[i], tpr[i], _ = roc_curve(y_true[:, i], y_pred[:, i])
         roc_auc = auc(fpr[i], tpr[i])
         plt.plot(fpr[i], tpr[i], lw=2, label='ROC curve of class {0} (area = {1:0.2f})'.format(label_names[i], roc_auc))
 
     plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlabel('False Positive Rate', fontsize=28)
-    plt.ylabel('True Positive Rate', fontsize=28)
-    plt.title('ROC curve', fontsize=28)
-    plt.legend(loc="lower right", fontsize=20)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC curve')
+    plt.legend(loc="lower right")
     if test:
         if not os.path.exists(output_folder+f"log/test/"):
             os.makedirs(output_folder+f"log/test/")
